@@ -62,6 +62,20 @@ class MovieSchema(ma.Schema):
 movie_schema = MovieSchema()
 movies_schema = MovieSchema(many=True)
 
+class Session(db.Model):
+  username = db.Column(db.String(100))
+  session = db.Column(db.String(100))
+
+  def __init__(self, username, session):
+    self.username = username
+    self.session = session
+
+class SessionSchema(ma.Schema):
+  class Meta:
+    fields = ('username', 'session')
+
+session_schema = SessionSchema()
+
 @app.route('/user/register', methods=["POST"])
 def register():
   username = request.json['username']
@@ -134,3 +148,33 @@ def delete_movie(movieid):
 
 if __name__ == '__main__':
   app.run(debug=True)
+
+@app.route('/session/new', method=['POST'])
+def new_session():
+  username = request.json['username']
+  session = request.json['session']
+
+  new_session = Session(username, session)
+
+  session = Session.query.get(new_session.session)
+
+  return session_schema.jsonify(session)
+
+@app.route('/session/<sessionid>', method=['GET'])
+def get_session(sessionid):
+  session = Session.query.get(sessionid)
+  return session_schema.jsonify(session)
+
+@app.route('/session/logout/<sessionid>', method=['DELETE'])
+def logout(sessionid):
+  session = Session.query.get(sessionid)
+  db.session.delete(session)
+  db.session.commit()
+
+  return 200
+
+@app.route('/session/users', method=['POST'])
+def get_user():
+  username = request.json['username']
+  user = User.query.get(username)
+  return user_schema.jsonify(user)
