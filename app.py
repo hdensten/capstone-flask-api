@@ -1,3 +1,6 @@
+# todo
+# password didn't hash
+
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -23,8 +26,8 @@ class User(db.Model):
   password_hash = db.Column(db.String(100), nullable=False)
   movies = db.relationship('Movie', backref='user', lazy=True) ## LOOK INTO LAZY, MIGHT NEED SOMETHING DIFFERENT
   
-  def set_password(self, password):
-    self.password_hash = bcrypt.hashpw(password, bcrypt.gensalt())
+  # def set_password(self, password):
+  #   self.password_hash = bcrypt.hashpw(password, bcrypt.gensalt())
   
   # def check_password(self, password):
   #   return bcrypt.checkpw(password, self.password_hash)
@@ -63,6 +66,7 @@ movie_schema = MovieSchema()
 movies_schema = MovieSchema(many=True)
 
 class Session(db.Model):
+  id = db.Column(db.Integer, primary_key=True)
   username = db.Column(db.String(100))
   session = db.Column(db.String(100))
 
@@ -72,7 +76,7 @@ class Session(db.Model):
 
 class SessionSchema(ma.Schema):
   class Meta:
-    fields = ('username', 'session')
+    fields = ('id','username', 'session')
 
 session_schema = SessionSchema()
 
@@ -82,7 +86,9 @@ def register():
   email = request.json['email']
   password = request.json['password']
 
-  new_user = User(username, email, password)
+  password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+  new_user = User(username, email, password_hash.decode('utf-8'))
 
   db.session.add(new_user)
   db.session.commit()
@@ -96,30 +102,30 @@ def login():
   username = request.json['username']
   password = request.json['password']
 
-  user = User.query.get(username)
+  user = User.query.filter_by(username=username).first()
 
-  if bcrypt.checkpw(password, user.password_hash):
+  if bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
     return user_schema.jsonify(user)
   else:
     return 400
 
-@app.route('/user/logout')
-def logout():
-  return "NOT_LOGGED_IN"
+# @app.route('/user/logout')
+# def logout():
+#   return "NOT_LOGGED_IN"
 
-@app.route('/movies/<userid>', method=["GET"])
+@app.route('/movies/<userid>', methods=["GET"])
 def get_movies(userid):
   movies = Movie.query.filter_by(user_id=userid).order_by(Movie.date).all()
   result = movies_schema.dump(movies)
   return jsonify(result)
 
-@app.route('/movie/<userid>/<movieid>', method=["GET"])
+@app.route('/movie/<userid>/<movieid>', methods=["GET"])
 def get_movie(userid, movieid):
   all_movies = Movie.query.filter_by(user_id=userid).all()
   movie = all_movies.get(movieid)
   return movie_schema.jsonify(movie)
 
-@app.route('/movie', method=["POST"])
+@app.route('/movie', methods=["POST"])
 def add_movie():
   tmdb_id = request.json['tmdb_id']
   date = request.json['date']
@@ -136,7 +142,7 @@ def add_movie():
 
   return movie_schema.jsonify(movie)
 
-@app.route('/movie/<userid>/<movieid>', method=['DELETE'])
+@app.route('/movie/<userid>/<movieid>', methods=['DELETE'])
 def delete_movie(movieid):
   all_movies = Movie.query.filter_by(user_id=userid).all()
   movie = all_movies.get(movieid)
@@ -146,10 +152,8 @@ def delete_movie(movieid):
 
   return "RECORD DELETED"
 
-if __name__ == '__main__':
-  app.run(debug=True)
 
-@app.route('/session/new', method=['POST'])
+@app.route('/session/new', methods=['POST'])
 def new_session():
   username = request.json['username']
   session = request.json['session']
@@ -160,12 +164,12 @@ def new_session():
 
   return session_schema.jsonify(session)
 
-@app.route('/session/<sessionid>', method=['GET'])
+@app.route('/session/<sessionid>', methods=['GET'])
 def get_session(sessionid):
   session = Session.query.get(sessionid)
   return session_schema.jsonify(session)
 
-@app.route('/session/logout/<sessionid>', method=['DELETE'])
+@app.route('/session/logout/<sessionid>', methods=['DELETE'])
 def logout(sessionid):
   session = Session.query.get(sessionid)
   db.session.delete(session)
@@ -173,8 +177,12 @@ def logout(sessionid):
 
   return 200
 
-@app.route('/session/users', method=['POST'])
+@app.route('/session/users', methods=['POST'])
 def get_user():
   username = request.json['username']
   user = User.query.get(username)
   return user_schema.jsonify(user)
+
+
+if __name__ == '__main__':
+  app.run(debug=True)
