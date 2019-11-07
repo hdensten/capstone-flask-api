@@ -36,7 +36,7 @@ user_schema = UserSchema()
 
 class Movie(db.Model):
   id = db.Column(db.Integer, primary_key=True)
-  tmdb_id = db.Column(db.Integer, unique=True, nullable=False)
+  tmdb_id = db.Column(db.Integer, nullable=False)
   date = db.Column(db.String(10), nullable=False)
   rating = db.Column(db.Integer, nullable=False)
   review = db.Column(db.Text)
@@ -132,14 +132,16 @@ def add_movie():
   poster_path = request.json['posterPath']
   user_id = request.json['userId']
 
-  new_movie = Movie(tmdb_id, date, rating, review, poster_path, user_id)
+  existing_movie = Movie.query.filter_by(user_id=user_id).filter_by(tmdb_id=tmdb_id).first()
 
-  db.session.add(new_movie)
-  db.session.commit()
-
-  movie = Movie.query.get(new_movie.id)
-
-  return movie_schema.jsonify(movie)
+  if existing_movie:
+    return "MOVIE_EXISTS"
+  else:
+    new_movie = Movie(tmdb_id, date, rating, review, poster_path, user_id)
+    db.session.add(new_movie)
+    db.session.commit()
+    movie = Movie.query.get(new_movie.id)
+    return movie_schema.jsonify(movie)
 
 @app.route('/movie/delete/<userid>/<movieid>', methods=['DELETE'])
 def delete_movie(userid, movieid):
