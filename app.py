@@ -7,6 +7,7 @@ from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
+heroku = Heroku(app)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgres://yerhktdwkcpxuu:cd604a32f2755456dddff74a0c4260461c2a50b52a0a1bea6a75cd1fbd2e1e9f@ec2-174-129-253-180.compute-1.amazonaws.com:5432/dflb0pc34rruv8"
